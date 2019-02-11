@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Author: Arclighz
 
 from email.parser import HeaderParser
 import sys
