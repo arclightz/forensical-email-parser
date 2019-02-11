@@ -45,8 +45,11 @@ def find_spf_header():
 
     if sfp_header_value != "":
         print colored(style.BOLD + '---------- SPF Header Found ---------' + style.END, 'blue')
+        print colored(style.BOLD + 'Received-SPF: fail'+ style.END, 'blue')
+        print colored(style.BOLD + 'The message should be rejected by the recipient\'s mail exchanger.'+ style.END, 'blue')
         print('Sender address: %s' % " ".join(str(x) for x in sender_ip_address))
         print('Found in : ' + sfp_header_value)
+
 
 # Parse the sender IP address from SFP header. Need to fix if no SPF header.
 def find_spf_header_ip():
@@ -97,6 +100,21 @@ def ip_whois(ip):
                         for y in results['objects'][x]['contact']['email']:
                             print '\tEmail: %s' % y['value']
 
+def parse_received():
+    received_headers = []
+    for k, v in h.items():
+        if k == 'Received':
+            received_headers.append(str(v))
+        else:
+                pass
+    findIP = re.findall(ipPattern,received_headers[-1])
+    #from IPython import embed; embed()
+    sender_ip_address = list(set(findIP))
+    print colored(style.BOLD + '\n---------- Sender IP based on Received headers ---------' + style.END, 'blue')
+    print('Sender address: %s' % " ".join(str(x) for x in sender_ip_address))
+    print('Found in : ' + received_headers[-1])
+    return sender_ip_address[0]
+
 
 def main():
     
@@ -107,9 +125,16 @@ def main():
     #from IPython import embed; embed()
 
     if find_spf_header_ip() != None:
+        print colored(style.BOLD + '---------- Checking details for SPF IP ---------' + style.END, 'blue')
         ip_whois(find_spf_header_ip())
     else:
         pass
+    
+    if find_spf_header_ip() != None:
+        ip_whois(parse_received())
+    else:
+        pass
+    #parse_received()
 
     # Python debugger
     #from IPython import embed; embed()
