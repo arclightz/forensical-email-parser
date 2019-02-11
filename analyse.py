@@ -45,7 +45,6 @@ def find_spf_header():
                 pass    
         else:
             pass
-    print("No sfp header information!")
 
     if sfp_header_value != "":
         print colored(style.BOLD + '---------- SPF Header Found ---------' + style.END, 'blue')
@@ -53,6 +52,8 @@ def find_spf_header():
         print colored(style.BOLD + 'The message should be rejected by the recipient\'s mail exchanger.'+ style.END, 'blue')
         print('Sender address: %s' % " ".join(str(x) for x in sender_ip_address))
         print('Found in : ' + sfp_header_value)
+    else:
+        print("No sfp header information!")
 
 
 # Parse the sender IP address from SFP header. Need to fix if no SPF header.
@@ -104,6 +105,7 @@ def ip_whois(ip):
                         for y in results['objects'][x]['contact']['email']:
                             print '\tEmail: %s' % y['value']
 
+# Parse headers and get last one of received.
 def parse_received(h):
     received_headers = []
     for k, v in h.items():
@@ -113,7 +115,9 @@ def parse_received(h):
             pass
     return received_headers[-1]
 
-
+# Find IPv4 address from headers 
+# Note: Fix this to check forst private addresses and 
+# pass the public address if any 
 def find_ip_from_parsed(received_headers):
     findIP = re.findall(ipPattern,parse_received(h))
     sender_ip_address = list(set(findIP))
@@ -162,6 +166,8 @@ def is_valid_ipv6_address(address):
         return False
     return True    
 
+
+# Checks if IPv4 address belogs to private subnets defined in RFCs
 def is_private_ip(ip):
     """Check if the IP belongs to private network blocks.
     @param ip: IP address to verify.
@@ -181,12 +187,9 @@ def is_private_ip(ip):
     return False
 
 def main():
-    
+
+    #for debugging
     #from IPython import embed; embed()
-
-    """parse_received(h)
-    find_ip_from_parsed(parse_received)"""
-
     print colored(style.BOLD + '\n\n---------- Query started: ' \
                     + str(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')) \
                     + '---------' + style.END, 'blue')
@@ -203,9 +206,7 @@ def main():
         print('Sender address: %s' % find_ip_from_parsed(parse_received))
         print('Found in : %s' % parse_received(h))
         
-        #from IPython import embed; embed()
         if find_ip_from_parsed(parse_received) != False:
-            #from IPython import embed; embed()
             if find_ip_from_parsed(parse_received) == None:
                 print colored(style.BOLD + 'No valid IPv4 address found and the author of this script cba IPv6 parsing, please copy paste :)' + style.END, 'red')
             else:
@@ -214,16 +215,7 @@ def main():
                 else:
                     print colored(style.BOLD + 'IP adderess of the sender in from private subnet, please check network documentation' + style.END, 'blue')
 
-    # Python debugger
-    #from IPython import embed; embed()
-    """
-                else:
-                
-        else:
-            print colored(style.BOLD + '\n---------- No valid IPv4 address found ---------' + style.END, 'blue')
-            print('Sender address: %s' % ip)
-            print('Found in : ' + parse_received(h))
 
-    """
+    
 main()
 
