@@ -10,7 +10,7 @@ from pprint import pprint
 import datetime
 from termcolor import colored
 import socket
-import struct
+from struct import unpack
 
 # Styles for terminal just for the lulz
 class style:
@@ -19,6 +19,7 @@ class style:
 
 # Regex to parse IP address
 ipPattern = re.compile('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}')
+
 
 # Open file using commanline argument
 with open(sys.argv[1], 'r') as mail:
@@ -88,7 +89,7 @@ def ip_whois(ip):
             for x in results['entities']:
                 print 'Handle: %s' % x
                 if 'contact' in results['objects'][x].keys():
-                    print '\tKind: %s' % results['objects'][x]['contact']['kind']
+                    print 'Kind: %s' % results['objects'][x]['contact']['kind']
                     if results['objects'][x]['contact']['phone'] is not None:
                         for y in results['objects'][x]['contact']['phone']:
                             print '\tPhone: %s' % y['value']
@@ -103,29 +104,31 @@ def ip_whois(ip):
                         for y in results['objects'][x]['contact']['email']:
                             print '\tEmail: %s' % y['value']
 
-def parse_received():
+def parse_received(h):
     received_headers = []
     for k, v in h.items():
         if k == 'Received':
             received_headers.append(str(v))
         else:
-                pass
-    findIP = re.findall(ipPattern,received_headers[-1])
+            pass
+    return received_headers[-1]
+
+
+def find_ip_from_parsed(received_headers):
+    findIP = re.findall(ipPattern,parse_received(h))
     sender_ip_address = list(set(findIP))
-    
-    for ip in sender_ip_address:
-        if is_valid_ipv4_address(ip) == True:
-            if is_private_ip(ip) == True:
-                ip = ""
-            else:
+    if sender_ip_address == "":
+        return False
+    else:
+        for ip in sender_ip_address:
+            if is_valid_ipv4_address(ip) == True:
                 #from IPython import embed; embed()
-                print colored(style.BOLD + '\n---------- Sender IP based on Received headers ---------' + style.END, 'blue')
-                print('Sender address: %s' % ip)
-                print('Found in : ' + received_headers[-1])
-                print ip
-                return ip
-        else:
-            return False
+                if is_private_ip(ip) == True:
+                    return ip
+                else:
+                    return ip
+            else:
+                return False
 
 
 def is_valid_ipv4_address(address):
@@ -165,43 +168,25 @@ def is_private_ip(ip):
     @return: boolean representing whether the IP belongs or not to
              a private network block.
     """
-    networks = [
-        "0.0.0.0/8",
-        "10.0.0.0/8",
-        "100.64.0.0/10",
-        "127.0.0.0/8",
-        "169.254.0.0/16",
-        "172.16.0.0/12",
-        "192.0.0.0/24",
-        "192.0.2.0/24",
-        "192.88.99.0/24",
-        "192.168.0.0/16",
-        "198.18.0.0/15",
-        "198.51.100.0/24",
-        "203.0.113.0/24",
-        "240.0.0.0/4",
-        "255.255.255.255/32",
-        "224.0.0.0/4",
-    ]
-
-    for network in networks:
-        try:
-            ipaddr = struct.unpack(">I", socket.inet_aton(ip))[0]
-
-            netaddr, bits = network.split("/")
-
-            network_low = struct.unpack(">I", socket.inet_aton(netaddr))[0]
-            network_high = network_low | 1 << (32 - int(bits)) - 1
-
-            if ipaddr <= network_high and ipaddr >= network_low:
-                return True
-        except:
-            continue
-
+    f = unpack('!I',socket.inet_pton(socket.AF_INET,ip))[0]
+    private = (
+        [ 2130706432, 4278190080 ], # 127.0.0.0,   255.0.0.0   http://tools.ietf.org/html/rfc3330
+        [ 3232235520, 4294901760 ], # 192.168.0.0, 255.255.0.0 http://tools.ietf.org/html/rfc1918
+        [ 2886729728, 4293918720 ], # 172.16.0.0,  255.240.0.0 http://tools.ietf.org/html/rfc1918
+        [ 167772160,  4278190080 ], # 10.0.0.0,    255.0.0.0   http://tools.ietf.org/html/rfc1918
+    ) 
+    for net in private:
+        if (f & net[1]) == net[0]:
+            return True
     return False
 
 def main():
     
+    #from IPython import embed; embed()
+
+    """parse_received(h)
+    find_ip_from_parsed(parse_received)"""
+
     print colored(style.BOLD + '\n\n---------- Query started: ' \
                     + str(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')) \
                     + '---------' + style.END, 'blue')
@@ -212,19 +197,33 @@ def main():
         ip_whois(find_spf_header_ip())
     else:
         print colored(style.BOLD + '---------- No SPF IP found ---------' + style.END, 'blue')
-        parse_received()
+        parse_received(h)
         print colored(style.BOLD + '---------- Checking details for Received IP ---------' + style.END, 'blue')
+        print colored(style.BOLD + '\n---------- Sender IP based on Received headers ---------' + style.END, 'blue')
+        print('Sender address: %s' % find_ip_from_parsed(parse_received))
+        print('Found in : %s' % parse_received(h))
+        
         #from IPython import embed; embed()
-        if parse_received() != False:
-            if is_private_ip(parse_received()) != False:
-                ip_whois(parse_received())
+        if find_ip_from_parsed(parse_received) != False:
+            #from IPython import embed; embed()
+            if find_ip_from_parsed(parse_received) == None:
+                print colored(style.BOLD + 'No valid IPv4 address found and the author of this script cba IPv6 parsing, please copy paste :)' + style.END, 'red')
             else:
-                print colored(style.BOLD + 'IP adderess of the sender in from private subnet, please check network documentation' + style.END, 'blue')
-    
-    #parse_received()
+                if is_private_ip(find_ip_from_parsed(parse_received)) == False:
+                    ip_whois(find_ip_from_parsed(parse_received))
+                else:
+                    print colored(style.BOLD + 'IP adderess of the sender in from private subnet, please check network documentation' + style.END, 'blue')
 
     # Python debugger
     #from IPython import embed; embed()
+    """
+                else:
+                
+        else:
+            print colored(style.BOLD + '\n---------- No valid IPv4 address found ---------' + style.END, 'blue')
+            print('Sender address: %s' % ip)
+            print('Found in : ' + parse_received(h))
 
+    """
 main()
 
