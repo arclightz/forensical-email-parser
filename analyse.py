@@ -25,7 +25,7 @@ ipPattern = re.compile('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}')
 with open(sys.argv[1], 'r') as mail:
         f = mail.read()
         mail.close()
-        
+
         # Email parser object
         parser = HeaderParser()
         h = parser.parsestr(f)
@@ -42,7 +42,7 @@ def find_spf_header():
                 sender_ip_address = list(set(findIP))
                 sfp_header_value = v
             else:
-                pass    
+                pass
         else:
             pass
 
@@ -115,9 +115,9 @@ def parse_received(h):
             pass
     return received_headers[-1]
 
-# Find IPv4 address from headers 
-# Note: Fix this to check forst private addresses and 
-# pass the public address if any 
+# Find IPv4 address from headers
+# Note: Fix this to check forst private addresses and
+# pass the public address if any
 def find_ip_from_parsed(received_headers):
     findIP = re.findall(ipPattern,parse_received(h))
     sender_ip_address = list(set(findIP))
@@ -164,7 +164,7 @@ def is_valid_ipv6_address(address):
         socket.inet_pton(socket.AF_INET6, address)
     except socket.error:  # not a valid address
         return False
-    return True    
+    return True
 
 
 # Checks if IPv4 address belogs to private subnets defined in RFCs
@@ -180,13 +180,20 @@ def is_private_ip(ip):
         [ 3232235520, 4294901760 ], # 192.168.0.0, 255.255.0.0 http://tools.ietf.org/html/rfc1918
         [ 2886729728, 4293918720 ], # 172.16.0.0,  255.240.0.0 http://tools.ietf.org/html/rfc1918
         [ 167772160,  4278190080 ], # 10.0.0.0,    255.0.0.0   http://tools.ietf.org/html/rfc1918
-    ) 
+    )
     for net in private:
         if (f & net[1]) == net[0]:
             return True
     return False
 
 def main():
+
+    print(" ______                 _ _     _")
+    print("|  ____|               (_) |   (_)         ")
+    print("| |__   _ __ ___   __ _ _| |___ _  ___ ___ ")
+    print("|  __| | '_ ` _ \ / _` | | / __| |/ __/ __|")
+    print("| |____| | | | | | (_| | | \__ \ | (__\__ \\")
+    print("|______|_| |_| |_|\__,_|_|_|___/_|\___|___/")
 
     #for debugging
     #from IPython import embed; embed()
@@ -205,7 +212,7 @@ def main():
         print colored(style.BOLD + '\n---------- Sender IP based on Received headers ---------' + style.END, 'blue')
         print('Sender address: %s' % find_ip_from_parsed(parse_received))
         print('Found in : %s' % parse_received(h))
-        
+
         if find_ip_from_parsed(parse_received) != False:
             if find_ip_from_parsed(parse_received) == None:
                 print colored(style.BOLD + 'No valid IPv4 address found and the author of this script cba IPv6 parsing, please copy paste :)' + style.END, 'red')
@@ -216,6 +223,5 @@ def main():
                     print colored(style.BOLD + 'IP adderess of the sender in from private subnet, please check network documentation' + style.END, 'blue')
 
 
-    
 main()
 
