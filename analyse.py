@@ -243,6 +243,7 @@ def abuse_check(IP, days):
 def report_abuse_ipdb():
     #from IPython import embed; embed()
     logs = abuse_ipd_logs[0].values()
+    print colored(style.BOLD + '\n---------- Checking details from AbuseIPDB ---------' + style.END, 'blue')
     print('Domain: %s' % logs[0]['domain'])
     print('IP: %s' % logs[0]['ipAddress'])
     print('ISP: %s' % logs[0]['isp'])
@@ -274,8 +275,6 @@ def main():
         print colored(style.BOLD + '---------- Checking details for SPF IP ---------' + style.END, 'blue')
         ip_whois(find_spf_header_ip())
         abuse_check(find_ip_from_parsed(parse_received), 30)
-        print colored(style.BOLD + '\n---------- Checking details from AbuseIPDB ---------' + style.END, 'blue')
-        #print(abuse_ipd_logs)
         report_abuse_ipdb()
     else:
         print colored(style.BOLD + '---------- No SPF IP found ---------' + style.END, 'blue')
@@ -292,6 +291,7 @@ def main():
                 if is_private_ip(find_ip_from_parsed(parse_received)) == False:
                     ip_whois(find_ip_from_parsed(parse_received))
                     abuse_check(find_ip_from_parsed(parse_received), 30)
+                    report_abuse_ipdb()
                 else:
                     print colored(style.BOLD + 'IP adderess of the sender in from private subnet, please check network documentation' + style.END, 'blue')
 
