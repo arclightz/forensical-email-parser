@@ -11,6 +11,9 @@ import datetime
 from termcolor import colored
 import socket
 from struct import unpack
+import requests
+import os
+
 
 # Styles for terminal just for the lulz
 class style:
@@ -19,6 +22,12 @@ class style:
 
 # Regex to parse IP address
 ipPattern = re.compile('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}')
+
+# Fetch API key from local env variable
+ipdb_api_key = os.environ["ABUSEIPDB_API"]
+
+# Logs
+abuse_ipd_logs = []
 
 
 # Open file using commanline argument
@@ -65,6 +74,7 @@ def find_spf_header_ip():
             if 'Fail' in v:
                 findIP = re.findall(ipPattern,v)
                 sender_ip_address = list(set(findIP))
+                #from IPython import embed; embed()
                 return sender_ip_address[0]
 
 # Whois query to check IP information
@@ -186,6 +196,64 @@ def is_private_ip(ip):
             return True
     return False
 
+def get_cat(x):
+    return {
+        3: 'Frad_Orders',
+        4: 'DDoS_Attack',
+        5: 'FTP_Brute-Force',
+        6: 'Ping of Death',
+        7: 'Phishing',
+        8: 'Fraud VoIP',
+        9: 'Open_Proxy',
+        10: 'Web_Spam',
+        11: 'Email_Spam',
+        12: 'Blog_Spam',
+        13: 'VPN IP',
+        14: 'Port_Scan',
+        15: 'Hacking',
+        16: 'SQL Injection',
+        17: 'Spoofing',
+        18: 'Brute_Force',
+        19: 'Bad_Web_Bot',
+        20: 'Exploited_Host',
+        21: 'Web_App_Attack',
+        22: 'SSH',
+        23: 'IoT_Targeted',
+    }.get(
+        x,
+        'UNK CAT, ***REPORT TO MAINTAINER***OPEN AN ISSUE ON GITHUB w/ IP***')
+
+
+def abuse_check(IP, days):
+    url = 'https://api.abuseipdb.com/api/v2/check'
+    data = {'ipAddress': IP, 'maxAgeInDays': '1'}
+    headers = {'key':ipdb_api_key, 'Accept':'application/json'}
+    r = requests.get(url, params=data, headers=headers)
+    data = r.json()
+    if not data:
+        abuse_ipd_logs.append({'ip': IP, 'category': [], 'created': '', 'country': '',
+                     'isoCode': '', 'isWhitelisted': False, 'abuseConfidenceScore': 0})
+        print("No log entries found from Abuse IPDB from 90 days")
+    elif type(data) is list:
+        for record in data:
+            abuse_ipd_logs.append(record)
+    else:
+        abuse_ipd_logs.append(data)
+
+def report_abuse_ipdb():
+    #from IPython import embed; embed()
+    logs = abuse_ipd_logs[0].values()
+    print('Domain: %s' % logs[0]['domain'])
+    print('IP: %s' % logs[0]['ipAddress'])
+    print('ISP: %s' % logs[0]['isp'])
+    print('Last reported: %s' % logs[0]['lastReportedAt'])
+    print('Country code: %s' % logs[0]['countryCode'])
+    print('Is public: %s' % logs[0]['isPublic'])
+    print('Usage type: %s' % logs[0]['usageType'])
+    print('Abuse Confidence Score: %s' % logs[0]['abuseConfidenceScore'])
+    print('Whitelisted:  %s' % logs[0]['isWhitelisted'])
+    print('Total reports:  %s' % logs[0]['totalReports'])
+
 def main():
 
     print(" ______                 _ _     _")
@@ -205,6 +273,10 @@ def main():
     if find_spf_header_ip() != None:
         print colored(style.BOLD + '---------- Checking details for SPF IP ---------' + style.END, 'blue')
         ip_whois(find_spf_header_ip())
+        abuse_check(find_ip_from_parsed(parse_received), 30)
+        print colored(style.BOLD + '\n---------- Checking details from AbuseIPDB ---------' + style.END, 'blue')
+        #print(abuse_ipd_logs)
+        report_abuse_ipdb()
     else:
         print colored(style.BOLD + '---------- No SPF IP found ---------' + style.END, 'blue')
         parse_received(h)
@@ -219,6 +291,7 @@ def main():
             else:
                 if is_private_ip(find_ip_from_parsed(parse_received)) == False:
                     ip_whois(find_ip_from_parsed(parse_received))
+                    abuse_check(find_ip_from_parsed(parse_received), 30)
                 else:
                     print colored(style.BOLD + 'IP adderess of the sender in from private subnet, please check network documentation' + style.END, 'blue')
 
