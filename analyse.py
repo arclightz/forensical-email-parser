@@ -3,8 +3,8 @@
 # 11.02.2019
 
 # TODO: * Add timeline of mail
-#       + Parse urls from message
-#       * cross check the domains for reg. date, virustotal, etc.
+#       * Fix this to check for private addresses and
+#       * cross check the domains for virustotal, etc.
 
 import email.parser
 import sys
@@ -137,7 +137,7 @@ def parse_received(h):
     return received_headers[-1]
 
 # Find IPv4 address from headers
-# Note: Fix this to check forst private addresses and
+# Note: Fix this to check for private addresses and
 # pass the public address if any
 def find_ip_from_parsed(received_headers):
     findIP = re.findall(ipPattern,parse_received(h))
@@ -155,7 +155,7 @@ def find_ip_from_parsed(received_headers):
             else:
                 return False
 
-
+# Check if IP is ipv4
 def is_valid_ipv4_address(address):
     """Check if the IP is IPv4.
     @param address: IP address to verify.
@@ -172,9 +172,9 @@ def is_valid_ipv4_address(address):
         return address.count('.') == 3
     except socket.error:  # not a valid address
         return False
-
     return True
 
+# Check if IP is ipv6
 def is_valid_ipv6_address(address):
     """Check if the IP is IPv6.
     @param address: IP address to verify.
@@ -207,6 +207,7 @@ def is_private_ip(ip):
             return True
     return False
 
+# Abuse IPDB categories for reports
 def get_cat(x):
     return {
         3: 'Frad_Orders',
@@ -234,7 +235,7 @@ def get_cat(x):
         x,
         'UNK CAT, ***REPORT TO MAINTAINER***OPEN AN ISSUE ON GITHUB w/ IP***')
 
-
+# Checking if IP is reported to Abuse IPDB
 def abuse_check(IP, days):
     url = 'https://api.abuseipdb.com/api/v2/check'
     data = {'ipAddress': IP, 'maxAgeInDays': '1'}
@@ -251,9 +252,8 @@ def abuse_check(IP, days):
     else:
         abuse_ipd_logs.append(data)
 
-
+# Print Abuse IPDB response
 def report_abuse_ipdb():
-    #from IPython import embed; embed()
     logs = abuse_ipd_logs[0].values()
     print colored(style.BOLD + '\n---------- Checking details from AbuseIPDB ---------' + style.END, 'blue')
     print('Domain: %s' % logs[0]['domain'])
@@ -296,32 +296,33 @@ def get_urls_from_message(messages):
 # Check domain registration information
 def check_domain_reg_date(links):
     my_domains = []
+    domains_sorted = []
     
     # Remove email addresses
     links = [x for x in links if not x.startswith('mailto:')]
     
     for link in links:
-        dom = urlparse(link).hostname
-        my_domains.append(dom)
+        dom_lst = (((urlparse(link).hostname).split('.'))[-2:])
+        dom = '.'.join(dom_lst)
+        my_domains.append(str(dom))
     
     for domain in my_domains:
+        if domain not in domains_sorted:
+            domains_sorted.append(domain)
+
+    for domain in domains_sorted:
         details = pythonwhois.get_whois(domain)
-        from IPython import embed; embed()
-        if details['contacts']['registrant'] == None:
+        if 'expiration_date' in details.keys():
+            print('Domain: ' + domain)
+            print('Creation date: '+ (details['creation_date'])[0].strftime('%Y/%m/%d'))
+            print('Expiration date: '+ (details['expiration_date'])[0].strftime('%Y/%m/%d'))
+            print('Abuse contact: ' + details['emails'][0] + '\n')
+        else:
             details_raw = details['raw'].pop()
             lines = details_raw.splitlines()
             print('Search for domain name: %s' % domain)
             print lines[0]
             print lines[1] + '\n'
-            #from IPython import embed; embed()
-        else:
-            from IPython import embed; embed()
-            print('')
-            print('')
-            print('')
-            print('')
-            print('')
-            print('')
 
 
 def main():
@@ -332,11 +333,6 @@ def main():
     print("|  __| | '_ ` _ \ / _` | | / __| |/ __/ __|")
     print("| |____| | | | | | (_| | | \__ \ | (__\__ \\")
     print("|______|_| |_| |_|\__,_|_|_|___/_|\___|___/")
-
-    
-    get_all_messages(email_content)
-    get_urls_from_message(get_all_messages(email_content))
-    check_domain_reg_date(get_urls_from_message(get_all_messages(email_content)))
     
     #for debugging
     #from IPython import embed; embed()
@@ -368,6 +364,14 @@ def main():
                     report_abuse_ipdb()
                 else:
                     print colored(style.BOLD + 'IP adderess of the sender in from private subnet, please check network documentation' + style.END, 'blue')
+
+    if get_urls_from_message(get_all_messages(email_content)) != []:
+        print colored(style.BOLD + '\n------------------ Checking domains found in email ------------------' + style.END, 'blue')
+        print colored(style.BOLD + '---------- NOTE: Check domains that have been recently registered  --\n' + style.END, 'blue')
+        get_all_messages(email_content)
+        get_urls_from_message(get_all_messages(email_content))
+        check_domain_reg_date(get_urls_from_message(get_all_messages(email_content)))
+
 
 
 main()
