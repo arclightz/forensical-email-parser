@@ -3,8 +3,8 @@
 # 11.02.2019
 
 # TODO: * Add timeline of mail
-#       * Parse urls from message and cross check the domains
-#         for reg. date, virustotal, etc.
+#       + Parse urls from message
+#       * cross check the domains for reg. date, virustotal, etc.
 
 import email.parser
 import sys
@@ -17,7 +17,9 @@ import socket
 from struct import unpack
 import requests
 import os
+import pythonwhois
 from bs4 import BeautifulSoup
+from urlparse import urlparse
 
 
 # Styles for terminal just for the lulz
@@ -265,7 +267,7 @@ def report_abuse_ipdb():
     print('Whitelisted:  %s' % logs[0]['isWhitelisted'])
     print('Total reports:  %s' % logs[0]['totalReports'])
 
-
+# Split email multipart message to messages
 def get_all_messages(email_message):
     stack = [email_message]
     messages = []
@@ -277,7 +279,7 @@ def get_all_messages(email_message):
             messages.append(msg)
     return messages
 
-
+# Get urls from html parts 
 def get_urls_from_message(messages):
     links = []
     for msg in messages:
@@ -291,6 +293,37 @@ def get_urls_from_message(messages):
     return links
 
 
+# Check domain registration information
+def check_domain_reg_date(links):
+    my_domains = []
+    
+    # Remove email addresses
+    links = [x for x in links if not x.startswith('mailto:')]
+    
+    for link in links:
+        dom = urlparse(link).hostname
+        my_domains.append(dom)
+    
+    for domain in my_domains:
+        details = pythonwhois.get_whois(domain)
+        from IPython import embed; embed()
+        if details['contacts']['registrant'] == None:
+            details_raw = details['raw'].pop()
+            lines = details_raw.splitlines()
+            print('Search for domain name: %s' % domain)
+            print lines[0]
+            print lines[1] + '\n'
+            #from IPython import embed; embed()
+        else:
+            from IPython import embed; embed()
+            print('')
+            print('')
+            print('')
+            print('')
+            print('')
+            print('')
+
+
 def main():
 
     print(" ______                 _ _     _")
@@ -300,8 +333,13 @@ def main():
     print("| |____| | | | | | (_| | | \__ \ | (__\__ \\")
     print("|______|_| |_| |_|\__,_|_|_|___/_|\___|___/")
 
+    
+    get_all_messages(email_content)
+    get_urls_from_message(get_all_messages(email_content))
+    check_domain_reg_date(get_urls_from_message(get_all_messages(email_content)))
+    
     #for debugging
-    from IPython import embed; embed()
+    #from IPython import embed; embed()
     print colored(style.BOLD + '\n\n---------- Query started: ' \
                     + str(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')) \
                     + '---------' + style.END, 'blue')
