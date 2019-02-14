@@ -2,7 +2,11 @@
 # Author: Saku Pietila
 # 11.02.2019
 
-from email.parser import HeaderParser
+# TODO: * Add timeline of mail
+#       * Parse urls from message and cross check the domains
+#         for reg. date, virustotal, etc.
+
+import email.parser
 import sys
 import re
 from ipwhois import IPWhois
@@ -13,6 +17,7 @@ import socket
 from struct import unpack
 import requests
 import os
+from bs4 import BeautifulSoup
 
 
 # Styles for terminal just for the lulz
@@ -29,6 +34,9 @@ ipdb_api_key = os.environ["ABUSEIPDB_API"]
 # Logs
 abuse_ipd_logs = []
 
+# Initialise email parsing
+email_parser = email.parser.Parser()
+
 
 # Open file using commanline argument
 with open(sys.argv[1], 'r') as mail:
@@ -36,8 +44,9 @@ with open(sys.argv[1], 'r') as mail:
         mail.close()
 
         # Email parser object
-        parser = HeaderParser()
+        parser = email.parser.HeaderParser()
         h = parser.parsestr(f)
+        email_content = email_parser.parsestr(f)
 
 # Check if the email headers contain SPF header
 def find_spf_header():
@@ -240,6 +249,7 @@ def abuse_check(IP, days):
     else:
         abuse_ipd_logs.append(data)
 
+
 def report_abuse_ipdb():
     #from IPython import embed; embed()
     logs = abuse_ipd_logs[0].values()
@@ -255,6 +265,32 @@ def report_abuse_ipdb():
     print('Whitelisted:  %s' % logs[0]['isWhitelisted'])
     print('Total reports:  %s' % logs[0]['totalReports'])
 
+
+def get_all_messages(email_message):
+    stack = [email_message]
+    messages = []
+    while len(stack):
+        msg = stack.pop()
+        if msg.is_multipart():
+            stack += msg.get_payload()
+        else:
+            messages.append(msg)
+    return messages
+
+
+def get_urls_from_message(messages):
+    links = []
+    for msg in messages:
+        if msg.get_content_type() == 'text/html':
+            # Decode the message according to Content-Transfer-Encoding
+            # Then decode the text according to charset field in Content-Type header, fall back to UTF-8 if not specified
+            payload = msg.get_payload(decode=True).decode(msg.get_content_charset('utf-8'))
+            bs = BeautifulSoup(payload, "html.parser")
+            for link in bs.findAll('a'):
+                links.append(link.get('href'))
+    return links
+
+
 def main():
 
     print(" ______                 _ _     _")
@@ -265,7 +301,7 @@ def main():
     print("|______|_| |_| |_|\__,_|_|_|___/_|\___|___/")
 
     #for debugging
-    #from IPython import embed; embed()
+    from IPython import embed; embed()
     print colored(style.BOLD + '\n\n---------- Query started: ' \
                     + str(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')) \
                     + '---------' + style.END, 'blue')
