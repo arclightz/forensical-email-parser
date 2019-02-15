@@ -279,7 +279,7 @@ def get_all_messages(email_message):
             messages.append(msg)
     return messages
 
-# Get urls from html parts 
+# Get urls from html parts
 def get_urls_from_message(messages):
     links = []
     for msg in messages:
@@ -297,15 +297,15 @@ def get_urls_from_message(messages):
 def check_domain_reg_date(links):
     my_domains = []
     domains_sorted = []
-    
+
     # Remove email addresses
     links = [x for x in links if not x.startswith('mailto:')]
-    
+
     for link in links:
         dom_lst = (((urlparse(link).hostname).split('.'))[-2:])
         dom = '.'.join(dom_lst)
         my_domains.append(str(dom))
-    
+
     for domain in my_domains:
         if domain not in domains_sorted:
             domains_sorted.append(domain)
@@ -333,7 +333,7 @@ def main():
     print("|  __| | '_ ` _ \ / _` | | / __| |/ __/ __|")
     print("| |____| | | | | | (_| | | \__ \ | (__\__ \\")
     print("|______|_| |_| |_|\__,_|_|_|___/_|\___|___/")
-    
+
     #for debugging
     #from IPython import embed; embed()
     print colored(style.BOLD + '\n\n---------- Query started: ' \
