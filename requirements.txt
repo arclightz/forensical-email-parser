@@ -13,4 +13,4 @@ pythonwhois==2.4.3
 requests==2.21.0
 soupsieve==1.7.3
 termcolor==1.1.0
-urllib3==1.24.1
+urllib3==1.26.5
